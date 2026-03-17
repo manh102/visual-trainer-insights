@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CNN Visualizer — Phân loại ảnh xe</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- GSAP CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollToPlugin.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Annotation Overlay Canvas ───────────────────────────────────────────── -->
+<canvas id="annotation-overlay"></canvas>
+
+<!-- ── Side Progress Nav ────────────────────────────────────────────────────── -->
+<nav class="side-nav" style="position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;">
+  <button class="nav-dot" title="Hero" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Upload" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Preprocessing" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Architecture" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Conv L1" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Conv L2" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Pooling" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="FC Layers" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Softmax" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Loss" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Backprop" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Weights" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Training" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+  <button class="nav-dot" title="Inference" style="width:8px;height:8px;border-radius:50%;background:#333355;border:none;cursor:pointer;transition:all .2s;padding:0;"></button>
+</nav>
+
+<style>
+  .nav-dot.active { background: var(--accent) !important; transform: scale(1.4); box-shadow: 0 0 6px var(--accent); }
+  .nav-dot:hover { background: #555577 !important; }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-hero" class="stage">
+  <div class="stage-inner" style="text-align:center;">
+    <div class="hero-content">
+      <div class="stage-badge"><span class="dot"></span>CNN Visualizer</div>
+      <h1>Máy học <span class="accent">nhìn</span> như thế nào?</h1>
+      <p class="hero-subtitle">
+        Khám phá toàn bộ quá trình một mạng nơ-ron tích chập (CNN) học cách phân loại
+        ảnh xe từ pixel thô đến kết quả dự đoán — từng bước, có animation.
+      </p>
+      <div class="scroll-cta">
+        <span>Cuộn xuống để bắt đầu</span>
+        <div class="scroll-arrow"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 1 — INPUT
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-1" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 1 / 13</div>
+      <h2>Dữ liệu đầu vào</h2>
+      <p class="dim text-sm mt-1">Tải lên ảnh xe để bắt đầu quá trình phân loại — mặt trước, mặt sau hoặc nội thất</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;">
+      <div>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="file-input" accept="image/*">
+          <div class="upload-icon">🚗</div>
+          <h3>Kéo thả hoặc click để chọn ảnh</h3>
+          <p>JPG, PNG, WEBP — bất kỳ ảnh xe nào</p>
+          <div class="sample-images">
+            <button class="sample-btn" data-sample="front">Mặt trước</button>
+            <button class="sample-btn" data-sample="rear">Mặt sau</button>
+            <button class="sample-btn" data-sample="interior">Nội thất</button>
+          </div>
+        </div>
+
+        <div id="input-preview-wrap" style="display:none;margin-top:1rem;">
+          <div class="canvas-card">
+            <div class="canvas-label">Ảnh đã tải lên</div>
+            <canvas id="canvas-input-preview" width="300" height="225" style="border-radius:8px;max-width:100%;"></canvas>
+          </div>
+          <p id="stage1-scroll-hint" class="dim text-xs mt-2" style="opacity:0;text-align:center;">
+            ✓ Tuyệt! Cuộn xuống để xem quá trình tiền xử lý
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="mb-2">Tại sao cần ảnh xe?</h3>
+        <p class="text-sm dim">CNN sẽ học cách phân biệt 3 góc chụp:</p>
+        <ul style="list-style:none;margin-top:1rem;display:flex;flex-direction:column;gap:0.75rem;">
+          <li class="flex gap-2" style="align-items:center;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#00d4ff;flex-shrink:0;"></div>
+            <span class="text-sm"><strong>Mặt trước</strong> — Logo, đèn pha, lưới tản nhiệt</span>
+          </li>
+          <li class="flex gap-2" style="align-items:center;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#ff6b35;flex-shrink:0;"></div>
+            <span class="text-sm"><strong>Mặt sau</strong> — Đèn hậu, biển số, cốp xe</span>
+          </li>
+          <li class="flex gap-2" style="align-items:center;">
+            <div style="width:10px;height:10px;border-radius:50%;background:#ffd700;flex-shrink:0;"></div>
+            <span class="text-sm"><strong>Nội thất</strong> — Vô lăng, bảng điều khiển, ghế</span>
+          </li>
+        </ul>
+        <div class="formula-box mt-3 text-xs">
+          Input: <strong>H × W × 3</strong> pixel (RGB)<br>
+          Resize về: <strong>224 × 224 × 3</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 2 — PREPROCESSING
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-2" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 2 / 13</div>
+      <h2>Tiền xử lý ảnh</h2>
+      <p class="dim text-sm mt-1">Resize về 224×224 và chuẩn hoá giá trị pixel theo ImageNet</p>
+    </div>
+
+    <div class="cols-3">
+      <div class="canvas-card">
+        <div class="canvas-label" id="preproc-label-orig">Ảnh gốc</div>
+        <canvas id="canvas-preproc-orig" width="224" height="224" style="max-width:100%;border-radius:8px;"></canvas>
+      </div>
+
+      <div class="canvas-card">
+        <div class="canvas-label" id="preproc-label-resize" style="opacity:0;">Resize → 224×224</div>
+        <canvas id="canvas-preproc-resized" width="224" height="224" style="max-width:100%;border-radius:8px;"></canvas>
+      </div>
+
+      <div id="preproc-norm-canvas-wrap" class="canvas-card">
+        <div class="canvas-label" id="preproc-label-norm" style="opacity:0;">Normalize (heatmap G-channel)</div>
+        <canvas id="canvas-normalize" width="252" height="252" style="max-width:100%;border-radius:8px;"></canvas>
+      </div>
+    </div>
+
+    <div class="formula-box mt-3 text-sm">
+      <strong>ImageNet normalization:</strong>&nbsp;
+      x' = (x/255 − μ) / σ &nbsp;|&nbsp; μ=[0.485, 0.456, 0.406], σ=[0.229, 0.224, 0.225]
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 3 — CNN ARCHITECTURE
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-3" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 3 / 13</div>
+      <h2>Kiến trúc CNN</h2>
+      <p class="dim text-sm mt-1">Tổng quan các lớp mạng — hover vào từng block để xem chi tiết</p>
+    </div>
+
+    <div class="card" style="overflow:visible;">
+      <div id="arch-canvas-wrap">
+        <canvas id="canvas-arch" style="width:100%;cursor:pointer;"></canvas>
+      </div>
+    </div>
+
+    <div class="cols-3 mt-3">
+      <div class="card text-sm">
+        <div style="color:var(--accent);font-weight:600;margin-bottom:0.5rem;">Conv Layers</div>
+        Học đặc trưng: cạnh → hình dạng → bộ phận xe
+      </div>
+      <div class="card text-sm">
+        <div style="color:var(--orange);font-weight:600;margin-bottom:0.5rem;">Pooling Layers</div>
+        Giảm kích thước không gian, giữ lại thông tin quan trọng
+      </div>
+      <div class="card text-sm">
+        <div style="color:#9966ff;font-weight:600;margin-bottom:0.5rem;">FC Layers</div>
+        Kết hợp tất cả đặc trưng → xác suất phân loại
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 4 — CONV LAYER 1
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-4" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 4 / 13</div>
+      <h2>Conv Layer 1 — Trích xuất đặc trưng cơ bản</h2>
+      <p class="dim text-sm mt-1">Cuộn chậm để thấy kernel 3×3 trượt qua ảnh và tạo feature map</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div>
+        <div class="canvas-card">
+          <div class="canvas-label">Ảnh đầu vào (64×64 crop)</div>
+          <canvas id="canvas-conv1-input" width="192" height="192" style="max-width:100%;border-radius:8px;"></canvas>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card text-sm">
+          <div style="color:var(--accent);font-weight:600;margin-bottom:0.75rem;">3 Kernels đang học:</div>
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Sobel-H — Cạnh ngang</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel-0" width="100" height="100" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv1-out-0" width="186" height="186" style="border-radius:6px;flex:1;max-width:120px;"></canvas>
+              </div>
+            </div>
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Sobel-V — Cạnh dọc</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel-1" width="100" height="100" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv1-out-1" width="186" height="186" style="border-radius:6px;flex:1;max-width:120px;"></canvas>
+              </div>
+            </div>
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Gaussian — Làm mờ</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel-2" width="100" height="100" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv1-out-2" width="186" height="186" style="border-radius:6px;flex:1;max-width:120px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-box mt-3 text-sm">
+      <strong>Convolution:</strong> output[x,y] = Σ(kernel[i,j] × input[x+i, y+j]) &nbsp;→&nbsp; ReLU(output)
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 5 — CONV LAYER 2
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-5" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 5 / 13</div>
+      <h2>Conv Layer 2 — Đặc trưng sâu hơn</h2>
+      <p class="dim text-sm mt-1">Layer 2 nhận feature map từ Layer 1, học các pattern phức tạp hơn (đường cong, góc cạnh xe)</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div>
+        <div class="canvas-card">
+          <div class="canvas-label">Feature map từ Layer 1 (28×28)</div>
+          <canvas id="canvas-conv2-input" width="168" height="168" style="max-width:100%;border-radius:8px;"></canvas>
+          <div class="text-xs dim mt-1" style="text-align:center;">Viridis colormap: tím=thấp, vàng=cao</div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <div class="card text-sm">
+          <div style="color:var(--accent);font-weight:600;margin-bottom:0.75rem;">3 Kernels layer 2:</div>
+          <div style="display:flex;flex-direction:column;gap:1rem;">
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Curve Detector</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel2-0" width="90" height="90" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv2-out-0" width="156" height="156" style="border-radius:6px;flex:1;max-width:100px;"></canvas>
+              </div>
+            </div>
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Corner Detector</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel2-1" width="90" height="90" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv2-out-1" width="156" height="156" style="border-radius:6px;flex:1;max-width:100px;"></canvas>
+              </div>
+            </div>
+            <div>
+              <div class="canvas-label" style="margin-bottom:4px;">Part Detector</div>
+              <div class="flex gap-2" style="align-items:center;">
+                <canvas id="canvas-kernel2-2" width="90" height="90" style="border-radius:4px;"></canvas>
+                <canvas id="canvas-conv2-out-2" width="156" height="156" style="border-radius:6px;flex:1;max-width:100px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 6 — POOLING
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-6" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 6 / 13</div>
+      <h2>Max Pooling — Giảm chiều không gian</h2>
+      <p class="dim text-sm mt-1">Cửa sổ 2×2 trượt qua, giữ lại giá trị lớn nhất — giảm 4× số pixel</p>
+    </div>
+
+    <div class="cols-2" style="align-items:center;gap:3rem;">
+      <div>
+        <div class="canvas-card">
+          <div class="canvas-label">Feature map 14×14 (trước pooling)</div>
+          <canvas id="canvas-pool-input" style="max-width:100%;border-radius:8px;"></canvas>
+          <div class="text-xs dim mt-1">Viền <span style="color:#ffd700;">vàng</span> = giá trị max trong cửa sổ | Viền <span style="color:#00d4ff;">xanh</span> = vị trí cửa sổ hiện tại</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="canvas-card">
+          <div class="canvas-label">Output 7×7 (sau max pooling)</div>
+          <canvas id="canvas-pool-output" style="max-width:100%;border-radius:8px;"></canvas>
+          <div class="text-xs dim mt-1">Mỗi ô = max của khối 2×2 tương ứng</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-box mt-3 text-sm">
+      output[i,j] = max(input[2i, 2j], input[2i+1, 2j], input[2i, 2j+1], input[2i+1, 2j+1])
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 7 — FC LAYERS
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-7" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 7 / 13</div>
+      <h2>Flatten & Fully Connected Layers</h2>
+      <p class="dim text-sm mt-1">Feature maps được "trải phẳng" thành vector 1D, rồi qua các lớp Dense</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div class="canvas-card">
+        <div class="canvas-label">Flatten: Feature maps → Vector 1D</div>
+        <canvas id="canvas-flatten" width="320" height="180" style="max-width:100%;border-radius:8px;"></canvas>
+      </div>
+
+      <div>
+        <div class="canvas-card">
+          <div class="canvas-label">FC Layers: 256 → 3 nodes</div>
+          <canvas id="canvas-fc" width="320" height="200" style="max-width:100%;border-radius:8px;"></canvas>
+        </div>
+        <div class="fc-stats mt-2">
+          <div class="fc-stat">
+            <div class="fc-stat-value">294</div>
+            <div class="fc-stat-label">Input neurons (7×7×6)</div>
+          </div>
+          <div class="fc-stat">
+            <div class="fc-stat-value">256</div>
+            <div class="fc-stat-label">Hidden neurons</div>
+          </div>
+          <div class="fc-stat">
+            <div class="fc-stat-value">3</div>
+            <div class="fc-stat-label">Output classes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 8 — SOFTMAX OUTPUT
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-8" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 8 / 13</div>
+      <h2>Softmax — Xác suất phân loại</h2>
+      <p class="dim text-sm mt-1">Lớp Softmax chuyển điểm số thô thành xác suất (tổng = 100%)</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div class="card" style="flex:1;">
+        <h3 class="mb-2">Dự đoán của mô hình</h3>
+        <div class="prob-bars" style="margin-top:1.5rem;">
+          <div class="prob-row">
+            <span class="prob-label" style="color:#00d4ff;">Mặt trước</span>
+            <div class="prob-track"><div class="prob-fill" id="prob-front-fill" style="width:0%"></div></div>
+            <span class="prob-pct" id="prob-front-pct">0%</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-label" style="color:#ff6b35;">Mặt sau</span>
+            <div class="prob-track"><div class="prob-fill" id="prob-rear-fill" style="width:0%"></div></div>
+            <span class="prob-pct" id="prob-rear-pct">0%</span>
+          </div>
+          <div class="prob-row">
+            <span class="prob-label" style="color:#ffd700;">Nội thất</span>
+            <div class="prob-track"><div class="prob-fill" id="prob-interior-fill" style="width:0%"></div></div>
+            <span class="prob-pct" id="prob-interior-pct">0%</span>
+          </div>
+        </div>
+
+        <div id="predicted-class-label" class="prediction-result mt-3" style="opacity:0;transform:scale(0.9);">
+          <div>
+            <div class="pred-label">Dự đoán</div>
+            <div class="pred-value" id="predicted-class-value">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1;">
+        <h3 class="mb-2">Công thức Softmax</h3>
+        <div class="formula-box text-sm">
+          σ(z)<sub>i</sub> = e<sup>z<sub>i</sub></sup> / Σ<sub>j</sub> e<sup>z<sub>j</sub></sup>
+        </div>
+        <p class="text-sm dim mt-2">
+          Đảm bảo tất cả xác suất đều dương và tổng bằng 1.
+          Lớp có điểm cao nhất → xác suất cao nhất.
+        </p>
+
+        <!-- Annotation bubble (static position) -->
+        <div id="annotation-softmax" class="annotation-bubble" style="position:relative;display:none;margin-top:1rem;">
+          <div class="ann-title">Softmax</div>
+          Giá trị lớn nhất = lớp được dự đoán. Mô hình càng tự tin, giá trị càng gần 1.0
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 9 — LOSS
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-9" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 9 / 13</div>
+      <h2>Tính Loss — Đo lường sai số</h2>
+      <p class="dim text-sm mt-1">Cross-entropy loss so sánh dự đoán với nhãn thực tế</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div class="card" style="flex:1;">
+        <h3 class="mb-2">Predicted vs Ground Truth</h3>
+        <div style="display:flex;gap:2rem;flex-wrap:wrap;margin-top:1rem;">
+          <div style="flex:1;min-width:120px;">
+            <div class="canvas-label mb-2">Predicted</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-pred-front" style="height:100%;width:0%;background:linear-gradient(90deg,#00d4ff,#0088aa);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Front</span>
+              </div>
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-pred-rear" style="height:100%;width:0%;background:linear-gradient(90deg,#ff6b35,#aa3300);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Rear</span>
+              </div>
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-pred-interior" style="height:100%;width:0%;background:linear-gradient(90deg,#ffd700,#aa9000);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Interior</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:6px;padding-top:22px;">
+            <div class="loss-delta-arrow" style="opacity:0;color:var(--red);font-size:1.2rem;line-height:22px;">←</div>
+            <div class="loss-delta-arrow" style="opacity:0;color:var(--red);font-size:1.2rem;line-height:22px;">←</div>
+            <div class="loss-delta-arrow" style="opacity:0;color:var(--red);font-size:1.2rem;line-height:22px;">←</div>
+          </div>
+
+          <div style="flex:1;min-width:120px;">
+            <div class="canvas-label mb-2">Ground Truth</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-gt-front" style="height:100%;width:0%;background:var(--green);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Front</span>
+              </div>
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-gt-rear" style="height:100%;width:0%;background:var(--green);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Rear</span>
+              </div>
+              <div style="height:22px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;position:relative;">
+                <div id="loss-gt-interior" style="height:100%;width:0%;background:var(--green);border-radius:4px;transition:none;"></div>
+                <span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:9px;color:#888;">Interior</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1;">
+        <h3 class="mb-2">Cross-Entropy Loss</h3>
+        <div class="loss-value-display" id="loss-value-display">0.0000</div>
+        <div id="loss-formula-box" class="formula-box text-sm mt-2" style="opacity:0;">
+          L = −log(p<sub>correct</sub>)
+        </div>
+        <p class="text-sm dim mt-2">
+          <strong>Loss → 0</strong>: mô hình tự tin và đúng<br>
+          <strong>Loss cao</strong>: mô hình dự đoán sai hoặc không tự tin
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 10 — BACKPROPAGATION
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-10" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 10 / 13</div>
+      <h2>Lan truyền ngược (Backpropagation)</h2>
+      <p class="dim text-sm mt-1">Gradient chạy ngược qua mạng để tính mức độ đóng góp lỗi của từng trọng số</p>
+    </div>
+
+    <div class="card w-full">
+      <canvas id="canvas-backprop" style="width:100%;border-radius:8px;"></canvas>
+    </div>
+
+    <div class="cols-3 mt-3">
+      <div class="card text-sm">
+        <div style="color:var(--orange);font-weight:600;margin-bottom:0.5rem;">Gradient lớn (cam)</div>
+        Lớp gần output — gradient rõ ràng, cập nhật mạnh
+      </div>
+      <div class="card text-sm">
+        <div style="color:#c04000;font-weight:600;margin-bottom:0.5rem;">Gradient trung bình</div>
+        Lan truyền qua nhiều phép nhân → giảm dần
+      </div>
+      <div class="card text-sm">
+        <div style="color:#600808;font-weight:600;margin-bottom:0.5rem;">Gradient rất nhỏ (đỏ tối)</div>
+        Vanishing gradient — lớp đầu học rất chậm
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 11 — WEIGHT UPDATE
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-11" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 11 / 13</div>
+      <h2>Cập nhật trọng số</h2>
+      <p class="dim text-sm mt-1">Gradient descent: điều chỉnh từng weight dựa vào gradient và learning rate</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div class="card">
+        <h3 class="mb-2">Kernel Sobel-H (trước → sau)</h3>
+        <div id="weight-grid" class="weight-grid mt-2"></div>
+        <div class="formula-box mt-3 text-sm" id="weight-formula" style="opacity:0;">
+          w<sub>new</sub> = w<sub>old</sub> − lr × ∇w<br>
+          <span class="dim">lr = 0.001 (learning rate)</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="mb-2">Kernel sau khi cập nhật</h3>
+        <canvas id="canvas-kernel-updated" width="110" height="110" style="border-radius:6px;"></canvas>
+        <p class="text-sm dim mt-2">
+          Sau mỗi lần cập nhật, kernel trở nên tốt hơn một chút trong việc phát hiện các đặc trưng tương ứng.
+          Sau hàng nghìn lần lặp, kernel hội tụ về giá trị tối ưu.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 12 — TRAINING LOOP
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-12" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 12 / 13</div>
+      <h2>Vòng lặp huấn luyện</h2>
+      <p class="dim text-sm mt-1">Mô hình lặp lại Forward → Loss → Backward → Update qua 50 epochs</p>
+    </div>
+
+    <div class="epoch-display mb-3">
+      <div>
+        <div class="big-counter" id="epoch-counter">0</div>
+        <div class="counter-label">Epoch</div>
+      </div>
+      <div>
+        <div class="big-counter" style="color:var(--green);" id="acc-counter">33.0%</div>
+        <div class="counter-label">Accuracy</div>
+      </div>
+
+      <div id="complete-badge" class="complete-badge" style="transform:scale(0.8);">
+        <svg viewBox="0 0 24 24">
+          <path id="check-path" d="M5 13l4 4L19 7" />
+        </svg>
+        Training hoàn tất!
+      </div>
+    </div>
+
+    <div class="card w-full">
+      <canvas id="canvas-loss-curve" style="width:100%;border-radius:8px;display:block;"></canvas>
+    </div>
+
+    <div class="cols-2 mt-3">
+      <div class="card text-sm">
+        <strong>Train loss (xanh)</strong> — giảm liên tục khi mô hình học
+      </div>
+      <div class="card text-sm">
+        <strong>Val loss (cam)</strong> — tăng nhẹ sau epoch 30 = dấu hiệu overfitting nhẹ
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     STAGE 13 — INFERENCE
+═══════════════════════════════════════════════════════════════════════════ -->
+<section id="stage-13" class="stage">
+  <div class="stage-inner">
+    <div class="stage-header">
+      <div class="stage-badge"><span class="dot"></span>Bước 13 / 13 — Thử mô hình đã train!</div>
+      <h2>Inference — Dự đoán với mô hình đã huấn luyện</h2>
+      <p class="dim text-sm mt-1">Upload ảnh xe mới và xem mô hình phân loại trong 2.5 giây</p>
+    </div>
+
+    <div class="cols-2" style="align-items:start;gap:2rem;">
+      <div>
+        <div class="upload-zone" id="upload-zone-2">
+          <input type="file" id="file-input-2" accept="image/*">
+          <div class="upload-icon">🔍</div>
+          <h3>Upload ảnh xe để thử mô hình</h3>
+          <p>Mô hình đã train sẽ phân loại ngay lập tức</p>
+        </div>
+
+        <canvas id="inference-img-preview" style="display:none;border-radius:8px;margin-top:1rem;border:1px solid var(--border);max-width:100%;"></canvas>
+
+        <!-- Replay strip -->
+        <div id="replay-strip" class="replay-strip" style="display:none;flex-wrap:wrap;"></div>
+      </div>
+
+      <div>
+        <div id="inference-results" style="display:none;">
+          <div class="card">
+            <h3 class="mb-2">Kết quả phân loại</h3>
+            <div class="prob-bars mt-2">
+              <div class="prob-row">
+                <span class="prob-label" style="color:#00d4ff;">Mặt trước</span>
+                <div class="prob-track"><div class="prob-fill" id="inf-bar-front" style="width:0%"></div></div>
+                <span class="prob-pct" id="inf-pct-front">0%</span>
+              </div>
+              <div class="prob-row">
+                <span class="prob-label" style="color:#ff6b35;">Mặt sau</span>
+                <div class="prob-track"><div class="prob-fill" id="inf-bar-rear" style="width:0%"></div></div>
+                <span class="prob-pct" id="inf-pct-rear">0%</span>
+              </div>
+              <div class="prob-row">
+                <span class="prob-label" style="color:#ffd700;">Nội thất</span>
+                <div class="prob-track"><div class="prob-fill" id="inf-bar-interior" style="width:0%"></div></div>
+                <span class="prob-pct" id="inf-pct-interior">0%</span>
+              </div>
+            </div>
+            <div id="inf-prediction" class="prediction-result mt-3" style="opacity:0;transform:scale(0.9);">
+              <div>
+                <div class="pred-label">Kết quả</div>
+                <div class="pred-value">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-2" style="text-align:center;">
+          <p class="dim text-sm mb-2">Bắt đầu lại từ đầu?</p>
+          <button id="reset-btn" style="background:var(--accent-dim);border:1px solid var(--accent);color:var(--accent);padding:0.6rem 1.5rem;border-radius:8px;cursor:pointer;font-family:var(--font-ui);font-size:0.9rem;transition:all .15s;">
+            ↑ Quay lại đầu trang
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Annotation Bubbles ────────────────────────────────────────────────────── -->
+<div id="annotation-imagenet-norm" class="annotation-bubble">
+  <div class="ann-title">ImageNet Normalization</div>
+  Trừ giá trị trung bình và chia độ lệch chuẩn của tập ImageNet.<br>
+  μ = [0.485, 0.456, 0.406] | σ = [0.229, 0.224, 0.225]
+</div>
+
+<div id="annotation-conv1-edge" class="annotation-bubble">
+  <div class="ann-title">Phát hiện cạnh</div>
+  Kernel Sobel khuếch đại sự thay đổi cường độ pixel — giúp phát hiện đường viền xe.
+</div>
+
+<div id="annotation-conv2-abstract" class="annotation-bubble">
+  <div class="ann-title">Đặc trưng trừu tượng</div>
+  Layer 2 kết hợp đặc trưng từ Layer 1 → nhận biết các bộ phận xe phức tạp hơn.
+</div>
+
+<!-- ── Main Script ─────────────────────────────────────────────────────────── -->
+<script type="module" src="main.js"></script>
+
+</body>
+</html>
