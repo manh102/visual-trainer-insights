@@ -91,13 +91,45 @@ function getTransformOrigin(position) {
   return map[position] || 'left center'
 }
 
+function isInViewport(rect) {
+  return (
+    rect.bottom > 0 &&
+    rect.right > 0 &&
+    rect.top < window.innerHeight &&
+    rect.left < window.innerWidth &&
+    rect.width > 0 &&
+    rect.height > 0
+  )
+}
+
 function redrawLines() {
   if (!overlayCtx) return
   overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height)
 
   activeAnnotations.forEach(({ bubbleEl, targetEl, position }) => {
-    if (bubbleEl.style.display === 'none') return
     const tRect = targetEl.getBoundingClientRect()
+
+    // Auto-hide bubble when its target element leaves the viewport
+    if (!isInViewport(tRect)) {
+      if (bubbleEl.style.opacity !== '0') {
+        gsap.to(bubbleEl, {
+          opacity: 0, scale: 0.8, duration: 0.2, ease: 'power2.in',
+          onComplete: () => { bubbleEl.style.display = 'none' }
+        })
+      }
+      return
+    }
+
+    // Target is back in view — re-show if hidden
+    if (bubbleEl.style.display === 'none') {
+      bubbleEl.style.display = 'block'
+      positionBubble(bubbleEl, targetEl, position)
+      gsap.to(bubbleEl, { opacity: 1, scale: 1, duration: 0.2, ease: 'power2.out' })
+    } else {
+      // Keep position in sync while scrolling (e.g. inside a pinned section)
+      positionBubble(bubbleEl, targetEl, position)
+    }
+
     const bRect = bubbleEl.getBoundingClientRect()
 
     // Anchor points
