@@ -30,9 +30,9 @@ export function initArchitecture() {
   // Hover tooltips
   canvas.addEventListener('mousemove', e => {
     const rect = canvas.getBoundingClientRect()
-    const scaleX = canvas.width / rect.width
-    const mx = (e.clientX - rect.left) * scaleX
-    const my = (e.clientY - rect.top) * scaleX
+    // _layerRects are in CSS (logical) pixel space — no DPR scaling needed
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
     const hit = findHitLayer(mx, my, canvas._layerRects)
     canvas.style.cursor = hit ? 'pointer' : 'default'
     if (hit) showLayerTooltip(hit, e.clientX, e.clientY)
